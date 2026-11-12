@@ -80,6 +80,25 @@ describe('`enableNetConnect()`', () => {
     )
   })
 
+  it('allows repeated matching requests when the regexp has a global or sticky flag', async () => {
+    const onResponse = sinon.spy()
+    const { origin } = await servers.startHttpServer((request, response) => {
+      onResponse()
+      response.writeHead(200)
+      response.end()
+    })
+    const { hostname, port } = new URL(origin)
+    const source = `^${hostname.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}:${port}`
+
+    for (const flags of ['g', 'y']) {
+      onResponse.resetHistory()
+      nock.enableNetConnect(new RegExp(source, flags))
+      await got(origin)
+      await got(origin)
+      expect(onResponse).to.have.been.calledTwice()
+    }
+  })
+
   it('enables real HTTP request only for specified domain, via function', async () => {
     const onResponse = sinon.spy()
     const { origin } = await servers.startHttpServer((request, response) => {
